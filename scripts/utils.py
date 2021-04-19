@@ -44,18 +44,20 @@ class Keyphrase:
         self.spans = spans
         self.attributes: List[Attribute] = []
 
+    #change self.spans to list of tuples (start_i, end_i) (?)
     def split(self):
         if len(self.spans) > 1:
             raise TypeError("Cannot split a keyphrase with multiple spans")
 
-        start, end = self.spans[0]
+        start, end = self.spans[0] #first span (?)
         spans = []
         spans.append(start)
 
-        for i, c in enumerate(self.text):
+        #self.text = words of a sentence separetaed by blank space
+        for i, c in enumerate(self.text): # For a sentence iterate on: i, char_i
             if c == " ":
-                spans.append(start + i)
-                spans.append(start + i + 1)
+                spans.append(start + i)   #position of a blank space after the word
+                spans.append(start + i + 1) #start of the word
 
         spans.append(end)
         self.spans = [(spans[i], spans[i + 1]) for i in range(0, len(spans), 2)]
@@ -67,6 +69,7 @@ class Keyphrase:
 
     @property
     def text(self):
+        #"remove" all symbols that are not words
         return " ".join(self.sentence.text[s:e] for (s, e) in self.spans)
 
     def __repr__(self):
@@ -86,7 +89,7 @@ class Keyphrase:
             ),
             self.text,
         )
-
+    #returns True if other Keyprase is equal to some keyphrase from self
     def matches(self, other: "Keyphrase", label=None):
         return (
             isinstance(other, Keyphrase)
@@ -208,6 +211,21 @@ class Sentence:
 
         return result
 
+    def partial_overlapping_keyphrases(self):
+        result = []
+
+        for s1 in self.keyphrases:
+            overlaps = set([s1])
+
+            for s2 in self.keyphrases:
+                if set(s2.spans) & set(s1.spans):
+                    overlaps.add(s2)
+
+            if len(overlaps) > 1 and overlaps not in result:
+                result.append(overlaps)
+
+        return result
+        
     def merge_overlapping_keyphrases(self):
         overlaps = self.overlapping_keyphrases()
 

@@ -36,8 +36,7 @@ class EntityAnnotation:
     def as_brat(self):
         spans = ";".join(" ".join(s) for s in self.spans)
         return "%s\t%s %s\t%s" % (self.id, self.type, spans, self.text)
-
-
+ 
 class RelationAnnotation:
     def __init__(self, id, typ, arg1, arg2):
         self.id = id
@@ -158,7 +157,7 @@ class AnnFile:
         self.annotations = []
 
     def load(self, path):
-        with open(path) as fp:
+        with open(path, encoding = "utf-8") as fp:
             for line in fp:
                 ann = self._parse(line)
                 if ann:
@@ -231,7 +230,8 @@ class AnnFile:
                 selected_annotations[ann.id] = ann
 
         self.annotations = list(selected_annotations.values())
-
+    
+    #changes spans of entities (why?)
     def offset_spans(self, sentences, first):
         sentences_offset = self._compute_sentence_offset(sentences)
 
@@ -244,10 +244,10 @@ class AnnFile:
                         for s in span
                     ]
                 )
-            )
+            )#to which sentece belongs annotation; from 0 to (# of sentences - 1)
 
             if len(locations) != 1:
-                raise ValueError()
+                raise ValueError()#entity of >1 words must belong to the same sentence
 
             location = locations.pop()
             offset = sentences_offset[location] + 1
@@ -260,6 +260,7 @@ class AnnFile:
                 for span in ann.spans
             ]
 
+    # returns list of the last position of each sentence, i.e., the end of each sentence
     def _compute_sentence_offset(self, sentences):
         sentences_offset = [-1]
 
