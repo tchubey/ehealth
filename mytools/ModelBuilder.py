@@ -9,7 +9,6 @@ from tensorflow.keras.models import load_model, save_model
 
 from scripts.submit import Algorithm
 from scripts.utils import Collection
-from mytools.Data import Data
 
 import logging
 logger = logging.getLogger(__name__)
@@ -30,7 +29,7 @@ class ModelBuilder(Algorithm):
                 raise ValueError(f"Couldnt load the model from {self.model_dir}.")
         else: raise ValueError("Trained model wasn't found.")
         
-    def get_train_valid_set(self, finput_train: Path, finput_valid: Path):
+    def get_train_valid_set(self, finput_train: Path, finput_valid: Path = None):
         #TRAIN SET
         finput_train = Path(finput_train)
         collection_train = (
@@ -38,20 +37,22 @@ class ModelBuilder(Algorithm):
             if finput_train.is_dir()
             else Collection().load(finput_train)
         )        
-        #VALIDATION SET        
-        finput_valid = Path(finput_valid)
-        collection_valid = (
-            Collection().load_dir(finput_valid)
-            if finput_valid.is_dir()
-            else Collection().load(finput_valid)
-        )
+        #VALIDATION SET
+        if finput_valid:        
+            finput_valid = Path(finput_valid)
+            collection_valid = (
+                Collection().load_dir(finput_valid)
+                if finput_valid.is_dir()
+                else Collection().load(finput_valid)
+            )
+        else: collection_valid = None
         
         return collection_train, collection_valid
         
     
     def save_model_to(self, output_name=None):
         if output_name: 
-            save_model(self.Model, filepath=os.join.path('models',output_name))
+            save_model(self.Model, filepath=os.path.join('models',output_name))
         else: save_model(self.Model, filepath=Path(self.model_dir))        
     
     
@@ -78,14 +79,15 @@ def get_config(config_path=None):
 
 def get_callbacks(config, checkpoint_filepath = "tmp/model_best"):
     callbacks = []
+
     callbacks.append(EarlyStopping(
-        monitor = 'loss',
+        monitor = 'val_loss',
         mode='min', 
-        patience = config.pop("patient",3),
+        patience = config.pop("patience",3),
         min_delta = config.pop("min_delta",0.01),
         restore_best_weights=True))
     callbacks.append(ModelCheckpoint(
-        str(checkpoint_filepath), monitor='loss',
+        str(checkpoint_filepath), monitor='val_loss',
         mode='min', save_best_only=True))     
     callbacks.append(TrainLoggerCallback())
     return callbacks

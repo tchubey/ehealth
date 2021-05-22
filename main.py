@@ -4,39 +4,31 @@ from pathlib import Path
 from scripts.utils import Collection
 
 from scripts.submit import Run, handle_args
-""" from scripts.baseline import Baseline
 
-from mytools.model_spacy import Spacy
-#from mytools.model_test import BERT_model
-from mytools.model_last_try import BERT_model """
-from mytools.ConcreteModel_23 import ConcreteModel
-
+from mytools.ConcreteModel_25 import ConcreteModel
+from mytools.misc import config_seeds
 def main(tasks):
     if not tasks:
         warnings.warn("The run will have no effect since no tasks were given.")
         return
-
-    #baseline = Baseline()
-    #baseline.train(Path("data/training/"))
-    #Run.submit("baseline_1", tasks, baseline)    
-    # spacy = Spacy()
-    # spacy.train(Path("data/training/"), output_dir = "models/model_spacy/")    
-    # Run.submit("Tania", tasks, spacy)
+    config_seeds()
     
-    name = "bert_re_23"
-    bert = ConcreteModel(model_name = name)
-    #bert.build_model()
-    #bert.train(finput_train = Path("data/example"), finput_valid = Path("data/ex/"))
-    #bert.train(finput_train = Path("data/training/"), finput_valid = Path("data/development/main"))
-    finput = Path("data/example/")
+    name = "bert_test_edit"
+    model = ConcreteModel(model_name = name)
+    
+    model.train(finput_train = Path("data/example"))#, output_name='bert_apartideotromodelo', from_scratch = False)#, finput_valid = Path("data/ex/"))
+    #model.train(finput_train = Path("data/training/"), finput_valid = Path("data/development/main"))
+    
+    finput = Path("data/example2/")
     collection2 = (
         Collection().load_dir(finput)
         if finput.is_dir()
         else Collection().load(finput)
     )
-    bert.run(collection2, taskA=True, taskB=False)
+    
+    model.run(collection2, taskA=True, taskB=True)
         
-    #Run.submit(name, tasks, bert)
+    #Run.submit(name, tasks, model)
     
 
 if __name__ == "__main__":
