@@ -1,15 +1,16 @@
 {
-"lstm_units": 20,
-"lstm_droput": 0.5,
-"filters": 60,
-"spatial_dropout": 0.3,
-"bilstm_units": 100,
-"bilstm_dropout": 0.8,
-"dense": 100,
-"mha": 100,
+"max_len": 50,
+"pretrained_embeddings": "dccuchile/bert-base-spanish-wwm-uncased",
+"remove_punctuation": true,
+"token2word": true,
 "learning_rate": 1e-03,
 "patience": 10,
 "min_delta": 0.01,
 "epochs": 100,
-"batch_size": 64
+"batch_size": 64,
+"spatial_dropout": 0.3,
+"bilstm_units": 100,
+"bilstm_dropout": 0.8,
+"dense": 100,
+"mha": 100
 }

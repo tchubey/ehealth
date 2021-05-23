@@ -12,11 +12,11 @@ from scripts.utils import Collection, Keyphrase, Sentence, ENTITIES
 from mytools.process_bilou import encode_bilou, decode_bilou
 
 class Data:
-    def __init__(self, max_len, pretrained_model_name):
+    def __init__(self, max_len, pretrained_model_name, remove_punctuation, token2word):
         self.max_len = max_len
         self.pretrained = pretrained_model_name
-        self.remove_punctuation = False
-        self.token2word = False
+        self.remove_punctuation = remove_punctuation
+        self.token2word = token2word
 
         self.tokenizer = BertTokenizerFast.from_pretrained(self.pretrained, strip_accents=True) # Load a pre-trained tokenizer
         self.bertembedd = TFBertModel.from_pretrained(self.pretrained)

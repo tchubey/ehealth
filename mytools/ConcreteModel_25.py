@@ -19,54 +19,49 @@ logger = logging.getLogger(__name__)
 #tf.enable_eager_execution()
 
 class ConcreteModel(ModelBuilder):
-    """Bert embeddings + WITHOUT char embeddings"""
-    MAX_LEN = 20 
-    PRETRAINED = 'bert-base-multilingual-cased' 
 
-    def __init__(self, model_name): 
-        super().__init__(model_name)
-        self.DataProcessor = Data(self.MAX_LEN, self.PRETRAINED)
+    def __init__(self, model_name, config_path = None): 
+        super().__init__(model_name, config_path)
+        # config, config_base, max_len, pretrained, remove_punctuation, token2word, model_dir, model
+        self.DataProcessor = Data(self.MAX_LEN, self.PRETRAINED, self.REMOVE_PUNCTUATION, self.TOKEN2WORD)
         self.n_bilou = self.DataProcessor.get_n_bilou()
-        self.n_tags = self.DataProcessor.get_n_labels()      
+        self.n_lab = self.DataProcessor.get_n_labels()      
         self.embedd_dim = self.DataProcessor.get_embedd_dim()
         self.DataRel = DataRelation(self.MAX_LEN)
         self.n_rel = self.DataRel.get_n_rel()  
        
-    def build_model(self, config=dict()):
+    def build_model(self):
         from tensorflow.keras.optimizers import Adam
         from tensorflow.keras import Input
         from tensorflow.keras.models import Model
-        from tensorflow.keras.layers import concatenate, Dense, TimeDistributed, Softmax
+        from tensorflow.keras.layers import concatenate, Dense, TimeDistributed
         
         x = Input(shape=(self.MAX_LEN, self.embedd_dim), dtype='float32')  
-
-        y = MainLSTMBlock(config=config)(x)#, mask = mask_bool)
-
-        y_bilou = TimeDistributed(Dense(self.n_bilou, activation='softmax', name = "bilou"))(y)
-        y_tags = TimeDistributed(Dense(self.n_tags, activation='softmax', name = "entities"))(y)
-
-        z = tf.argmax(y_tags, axis=-1) #ValueError: A `Concatenate` layer requires inputs with matching shapes except for the concat axis. Got inputs shapes: [(None, 30, 768), (None, 30)]
-        z = tf.one_hot(z, self.n_tags)
-
         inputs = [x]
+        
+        y = MainLSTMBlock(config=self.config)(x)
+        bilou = TimeDistributed(Dense(self.n_bilou, activation='softmax', name = "bilou"))(y)
+        labels = TimeDistributed(Dense(self.n_lab, activation='softmax', name = "entities"))(y)
 
-        cc = concatenate([y,z]) 
+        z = tf.argmax(labels, axis=-1) #ValueError: A `Concatenate` layer requires inputs with matching shapes except for the concat axis. Got inputs shapes: [(None, 30, 768), (None, 30)]
+        z = tf.one_hot(z, self.n_lab)
+
+        cc = concatenate([y, z]) 
 
         w = CrossLayer4D()(cc)
-        w = Dense(200, activation = "relu")(w)
         w = Dense(100, activation = "relu")(w)
-        w = Dense(self.n_rel, activation="softmax", name="relations")(w)
+        relations = Dense(self.n_rel, activation="softmax", name="relations")(w)
 
-        outputs = [y_bilou,y_tags,w]
+        outputs = [bilou, labels, relations]
 
         self.Model = Model(inputs,outputs)        
-        optimizer = Adam(learning_rate = config.get("learning_rate",0.001))
+        optimizer = Adam(learning_rate = self.config.get("learning_rate",0.001))
         self.Model.compile(optimizer, loss=sparse_crossentropy_masked)#, loss_weights={"entities":1,"relations":1} )
 
         print(self.Model.summary())
         
     #----------- TRAINING -------------#            
-    def train(self, finput_train: Path, finput_valid: Path = None, config_path=None, output_name=None, from_scratch = True):
+    def train(self, finput_train: Path, finput_valid: Path = None, output_name=None, from_scratch = True):
         """output_dir: ruta donde queremos guardar el modelo entrenado si output_dir = None, ent guardar en model_dir"""
         #TRAIN-VALID SETS
         train_coll, valid_coll = super().get_train_valid_set(finput_train, finput_valid)        
@@ -93,23 +88,20 @@ class ConcreteModel(ModelBuilder):
             z_valid = self.DataRel.process_input_collection_4d(valid_coll, tokens_valid, token_spans_valid).get("labels")
 
             validation_data = ([X_valid],[y1_valid, y2_valid, z_valid])
-        
-        #MODEL AND FIT CONFIGURATION
-        config = get_config(config_path)
  
         #BUILD MODEL FROM SCRATCH
         if from_scratch:
-            self.build_model(config)
+            self.build_model()
         elif not self.Model: 
                 self.load_existing_model(custom_objects={"sparse_crossentropy_masked":sparse_crossentropy_masked})  
         
         # TRAIN        
-        callbacks = get_callbacks(config) #early stopping
+        callbacks = get_callbacks(self.config) #early stopping
         hist = self.Model.fit( x=[X_train], y=[y1_train, y2_train, z_train]
                                 ,validation_data = validation_data
                                 ,verbose = 1
-                                ,epochs = config.pop("epochs",1)
-                                ,batch_size = config.pop("batch_size",12)
+                                ,epochs = self.config.pop("epochs",1)
+                                ,batch_size = self.config.pop("batch_size",12)
                                 ,callbacks = callbacks
                             )                            
         logger.info(f"Epoch return by callback: {callbacks[0].stopped_epoch}")                         
@@ -122,7 +114,7 @@ class ConcreteModel(ModelBuilder):
 
 
     #----------- PREDICTION ----------#
-    def run(self, collection, *args, taskA, taskB, **kargs):
+    def run(self, collection, taskA, taskB):
         if not self.Model: 
             self.load_existing_model(custom_objects={"sparse_crossentropy_masked":sparse_crossentropy_masked})  
             

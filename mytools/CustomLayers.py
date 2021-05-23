@@ -19,9 +19,8 @@ class MainLSTMBlock(Layer):
                                         recurrent_dropout=self.bilstm_dropout))
         self.bilstm_2 = Bidirectional(LSTM(units=self.bilstm_units, return_sequences=True,
                                         recurrent_dropout=self.bilstm_dropout))
-
-    def call(self, inputs):
-        x = self.spatial(inputs)
+    def call(self, x):
+        x = self.spatial(x)
         x = self.bilstm(x)
         x = self.bilstm_2(x)
         return x

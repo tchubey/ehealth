@@ -15,20 +15,37 @@ logger = logging.getLogger(__name__)
 #tf.enable_eager_execution()
 
 class ModelBuilder(Algorithm):
-    def __init__(self, model_name): 
+    def __init__(self, model_name, config_path): 
         super(ModelBuilder).__init__()
         self.model_dir = os.path.join('models', model_name)
         self.Model = None
-        
+        self.config = get_config(config_path)
+        self.MAX_LEN = self.config.get('max_len', 20)
+        self.PRETRAINED = self.config.get('pretrained_embeddings', 'dccuchile/bert-base-spanish-wwm-uncased')  #'bert-base-multilingual-cased' 
+        self.REMOVE_PUNCTUATION = self.config.get('remove_punctuation', True)
+        self.TOKEN2WORD = self.config.get('token2word', True)
+
+        self.config_base = {"max_len": self.MAX_LEN, "pretrained_embeddings": self.PRETRAINED, \
+                        "remove_punctuation": self.REMOVE_PUNCTUATION, "token2word": self.TOKEN2WORD} #min config needed to preprocess data for predicting
+
     def load_existing_model(self, custom_objects=None):
         if Path(self.model_dir).exists():
             try:
-                self.Model = load_model(Path(self.model_dir ), custom_objects = custom_objects)
+                self.Model = load_model(Path(self.model_dir), custom_objects = custom_objects)
+                print(os.path.join(self.model_dir,'config.json'))
+                self.config_base = get_config(os.path.join(self.model_dir,'config.json'))
+                
+                self.MAX_LEN = self.config_base.get('max_len')
+                self.PRETRAINED = self.config_base.get('pretrained_embeddings')
+                self.REMOVE_PUNCTUATION = self.config_base.get('remove_punctuation')
+                self.TOKEN2WORD = self.config_base.get('token2word')
+                
                 print("Model was succesfully loaded.")
             except:
                 raise ValueError(f"Couldnt load the model from {self.model_dir}.")
         else: raise ValueError("Trained model wasn't found.")
         
+
     def get_train_valid_set(self, finput_train: Path, finput_valid: Path = None):
         #TRAIN SET
         finput_train = Path(finput_train)
@@ -52,28 +69,35 @@ class ModelBuilder(Algorithm):
     
     def save_model_to(self, output_name=None):
         if output_name: 
-            save_model(self.Model, filepath=os.path.join('models',output_name))
-        else: save_model(self.Model, filepath=Path(self.model_dir))        
+            filepath=os.path.join('models',output_name)
+        else: filepath=Path(self.model_dir) 
+        save_model(self.Model, filepath=filepath)
+        save_config(self.config_base, os.path.join(filepath,'config.json'))      
     
     
-    def build_model(self, config):
+    def build_model(self):
         pass 
     
-    def train(self, finput_train: Path, finput_valid: Path, config_path=None, output_name=None):
-        """output_dir: ruta donde queremos guardar el modelo entrenado si output_dir = None, ent guardar en model_dir"""
+    def train(self):
         pass        
         
-    def run(self, collection, *args, taskA, taskB, **kargs):
+    def run(self):
         pass
 
-def get_config(config_path=None):
+def save_config(config, config_path):
+    try:
+        with open(Path(config_path), 'w') as file:
+            json.dump(config, file)
+    except:  
+        raise ValueError(f'Couldnt save configuration file to {config_path}.')   
+
+def get_config(config_path):
     if config_path:
         try:
             with open(Path(config_path), 'r') as file:
                 config = json.load(file)
-        except: 
-            config = dict()  
-            print(f'Couldnt load configuration file from {config_path}. Default configuration will be used.')
+        except:  
+            raise ValueError(f'Couldnt load configuration file from {config_path}.')
     else: config = dict()   
     return config
 
