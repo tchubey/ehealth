@@ -1,2 +1,0 @@
-command: bash $program/eval.sh dev $input $output
-description: Evaluation for the development phase

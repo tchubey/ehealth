@@ -62,7 +62,7 @@ def decode_bilou(sentence:Sentence, tags, tokens, spans) -> List[Keyphrase]:
         """IF the new label is BUO, 
         or the new label is different from previous one, 
         or  the new label is IL but the previuos one isnt BI
-        THEN save the previous entity and reset some variables."""
+        THEN save the previous entity and reset """
         bool_1 = (w['label'][:1] in ['B','U','O'])
         bool_2 = w['label'][2:] != prev_label
         bool_3 = (w['label'][:1] in ['I','L']) and (prev_state not in ['B','I'])

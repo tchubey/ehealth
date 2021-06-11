@@ -8,66 +8,26 @@ from scripts.utils import Collection, Relation, Sentence, RELATIONS
 class DataRelation:
     def __init__(self, max_len):
         self.max_len = max_len    
+        pad = {"pad": 0} 
         self.rel = ['none'] + RELATIONS
-        self.n_rel = len(self.rel)
-        self.rel2idx= {t: i for i, t in enumerate(self.rel)}  # none: 0
+        self.rel2idx= {**{t: i+1 for i, t in enumerate(self.rel)}, **pad}
         self.idx2rel = {i: w for w, i in self.rel2idx.items()}
+        self.n_rel = len(self.rel2idx)
+
 
     def get_n_rel(self):
         return self.n_rel
-
-    def process_input_sentence(self, sentence, tokens, spans) -> dict:
-        T = [{"text":t, "span":s} for t, s in zip(tokens, spans)]    
-        rel = [-1]*(self.max_len**2)
-        pairs=[]
-        k=0
-        for t1 in T:
-            for t2 in T:                    
-                if t1['text'] != t2['text'] \
-                        and not t1['text'].startswith('##') \
-                        and not t2['text'].startswith('##') \
-                        and t1['text'] not in ['[PAD]','[SEP]','[CLS]'] \
-                        and t2['text'] not in ['[PAD]','[SEP]','[CLS]']:
-                    span1 = t1["span"]
-                    span2 = t2["span"]
-                    id_origin = findKeyphraseId(sentence, span1)
-                    id_dest = findKeyphraseId(sentence, span2)
-                    #puede que el token no sea keyphrase
-                    if id_origin and id_dest and id_origin != id_dest:
-                        relation = findRelation(sentence, id_origin, id_dest)
-                        if relation:
-                            rel[k] = self.rel2idx[relation.label]
-                k +=1
-                pairs.extend([(t1,t2)])
-
-        return {"token_pairs": pairs, \
-                "labels": rel
-                }
-
-    def process_input_collection(self, collection: Collection, tokens, token_spans):
-        relations = [] #n_sentences x max_len^2
-        token_pairs = []
-        for i, (tokens_s, spans_s) in enumerate(zip(tokens, token_spans)):
-            sentence = collection.sentences[i] 
-            out_dict = self.process_input_sentence(sentence, tokens_s, spans_s)
-           
-            if out_dict.get("labels"): relations.append(out_dict.get("labels"))
-            token_pairs.append(out_dict.get("token_pairs"))
-            
-        return {"labels": np.array(relations).astype('int32') if relations else None,
-                "token_pairs":token_pairs
-                }
-
+   
     def process_input_sentence_4d(self, sentence: Sentence, tokens, spans) -> dict:
         T = [{"text":t, "span":s} for t, s in zip(tokens, spans)]    
-        relat = []
+        labels = []
         pairs=[]
         for t1 in T:
-            rel = [-1]*self.max_len
-            for k, t2 in enumerate(T):  
-                if t1['text'] != t2['text']  \
-                        and t1['text'] not in ['[PAD]','[SEP]','[CLS]'] \
+            rel = [self.rel2idx['pad']]*self.max_len
+            for k, t2 in enumerate(T): 
+                if t1['text'] not in ['[PAD]','[SEP]','[CLS]'] \
                         and t2['text'] not in ['[PAD]','[SEP]','[CLS]'] \
+                        and t1['text'] != t2['text']  \
                         and not t1['text'].startswith('##') \
                         and not t2['text'].startswith('##'):
                     span1 = t1["span"]
@@ -80,11 +40,11 @@ class DataRelation:
                         if relation:
                             rel[k] = self.rel2idx[relation.label]
                         else:
-                            rel[k] = self.rel2idx['none']
+                            rel[k] = self.rel2idx["none"]
                 pairs.extend([(t1,t2)])
-            relat.append(rel)
+            labels.append(rel)
         return {"token_pairs": pairs, \
-                "labels": relat
+                "labels": np.array(labels) if labels else None
                 }
 
     def process_input_collection_4d(self, collection: Collection, tokens, token_spans):
@@ -93,7 +53,7 @@ class DataRelation:
         for i, (tokens_s, spans_s) in enumerate(zip(tokens, token_spans)):
             sentence = collection.sentences[i] 
             out_dict = self.process_input_sentence_4d(sentence, tokens_s, spans_s)           
-            if out_dict.get("labels"): relations.append(out_dict.get("labels"))
+            relations.append(out_dict.get("labels"))
             token_pairs.append(out_dict.get("token_pairs"))
             
         return {"labels": np.array(relations).astype('int32') if relations else None,
@@ -102,7 +62,7 @@ class DataRelation:
 
     def process_output_sentence(self, sentence, prediction, token_pairs) -> List[Relation]:
         predicted_tags = [self.idx2rel.get(p) for pred in prediction for p in pred]   
-        
+        #print(predicted_tags)
         list_of_relations = []
         for pair, tag in zip(token_pairs, predicted_tags):
             token1 = pair[0].get('text')

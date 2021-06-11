@@ -19,27 +19,18 @@ class ModelBuilder(Algorithm):
         super(ModelBuilder).__init__()
         self.model_dir = os.path.join('models', model_name)
         self.Model = None
-        self.config = get_config(config_path)
-        self.MAX_LEN = self.config.get('max_len', 20)
-        self.PRETRAINED = self.config.get('pretrained_embeddings', 'dccuchile/bert-base-spanish-wwm-uncased')  #'bert-base-multilingual-cased' 
-        self.REMOVE_PUNCTUATION = self.config.get('remove_punctuation', True)
-        self.TOKEN2WORD = self.config.get('token2word', True)
-
-        self.config_base = {"max_len": self.MAX_LEN, "pretrained_embeddings": self.PRETRAINED, \
-                        "remove_punctuation": self.REMOVE_PUNCTUATION, "token2word": self.TOKEN2WORD} #min config needed to preprocess data for predicting
+        
+        config_path = config_path or os.path.join(self.model_dir,'config.json')
+        self.config = get_config(config_path)                
+        
+        self.MAX_LEN = self.config.get('max_len')
+        self.PRETRAINED = self.config.get('pretrained_embeddings')
+        self.TOKEN2WORD = self.config.get('token2word')
 
     def load_existing_model(self, custom_objects=None):
         if Path(self.model_dir).exists():
             try:
-                self.Model = load_model(Path(self.model_dir), custom_objects = custom_objects)
-                print(os.path.join(self.model_dir,'config.json'))
-                self.config_base = get_config(os.path.join(self.model_dir,'config.json'))
-                
-                self.MAX_LEN = self.config_base.get('max_len')
-                self.PRETRAINED = self.config_base.get('pretrained_embeddings')
-                self.REMOVE_PUNCTUATION = self.config_base.get('remove_punctuation')
-                self.TOKEN2WORD = self.config_base.get('token2word')
-                
+                self.Model = load_model(Path(self.model_dir), custom_objects = custom_objects)             
                 print("Model was succesfully loaded.")
             except:
                 raise ValueError(f"Couldnt load the model from {self.model_dir}.")
@@ -72,7 +63,7 @@ class ModelBuilder(Algorithm):
             filepath=os.path.join('models',output_name)
         else: filepath=Path(self.model_dir) 
         save_model(self.Model, filepath=filepath)
-        save_config(self.config_base, os.path.join(filepath,'config.json'))      
+        save_config(self.config, os.path.join(filepath,'config.json'))      
     
     
     def build_model(self):
@@ -81,7 +72,7 @@ class ModelBuilder(Algorithm):
     def train(self):
         pass        
         
-    def run(self):
+    def run(self, *args, taskA, taskB, **kargs):
         pass
 
 def save_config(config, config_path):
@@ -103,18 +94,19 @@ def get_config(config_path):
 
 def get_callbacks(config, checkpoint_filepath = "tmp/model_best"):
     callbacks = []
-
     callbacks.append(EarlyStopping(
         monitor = 'val_loss',
         mode='min', 
-        patience = config.pop("patience",3),
+        patience = config.get("patience",10),
         min_delta = config.pop("min_delta",0.01),
         restore_best_weights=True))
     callbacks.append(ModelCheckpoint(
-        str(checkpoint_filepath), monitor='val_loss',
+        str(checkpoint_filepath), monitor='loss',
         mode='min', save_best_only=True))     
     callbacks.append(TrainLoggerCallback())
     return callbacks
+
+
 
 class TrainLoggerCallback(Callback):
     def on_epoch_end(self, epoch, logs=None):

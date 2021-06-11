@@ -1,2 +1,0 @@
-command: bash $program/eval.sh test $input $output
-description: Evaluation for the testing phase

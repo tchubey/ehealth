@@ -1,7 +1,7 @@
 #from keras.layers.core import Reshape
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.layers import Layer, Lambda, Bidirectional, LSTM, Dense, \
+from tensorflow.keras.layers import Layer, Lambda, Bidirectional, LSTM, Dense, GRU, \
                      SpatialDropout1D, Reshape, TimeDistributed, \
                      Conv1D, MaxPooling1D, GlobalMaxPooling1D, Embedding, Flatten
 
@@ -11,20 +11,36 @@ from mytools.tools_layers import *
 class MainLSTMBlock(Layer):
     def __init__(self, config = dict()):
         super(MainLSTMBlock, self).__init__()
-        self.spatial_droput = config.get("spatial_droput",0.3)
+        self.spatial_dropout = config.get("spatial_dropout",0.3)
         self.bilstm_units = config.get("bilstm_units",30)
         self.bilstm_dropout = config.get("bilstm_dropout",0.5)
-        self.spatial = SpatialDropout1D(self.spatial_droput)
+        #self.spatial = SpatialDropout1D(self.spatial_droput)
         self.bilstm = Bidirectional(LSTM(units=self.bilstm_units, return_sequences=True,
                                         recurrent_dropout=self.bilstm_dropout))
         self.bilstm_2 = Bidirectional(LSTM(units=self.bilstm_units, return_sequences=True,
+                                        recurrent_dropout=self.bilstm_dropout))
+    def call(self, x):
+        #x = self.spatial(x)
+        x = self.bilstm(x)
+        x = self.bilstm_2(x)
+        return x
+
+class MainGRUBlock(Layer):
+    def __init__(self, config = dict()):
+        super(MainGRUBlock, self).__init__()
+        self.spatial_dropout = config.get("spatial_dropout",0.3)
+        self.bilstm_units = config.get("bilstm_units",30)
+        self.bilstm_dropout = config.get("bilstm_dropout",0.5)
+        self.spatial = SpatialDropout1D(self.spatial_dropout)
+        self.bilstm = Bidirectional(GRU(units=self.bilstm_units, return_sequences=True,
+                                        recurrent_dropout=self.bilstm_dropout))
+        self.bilstm_2 = Bidirectional(GRU(units=self.bilstm_units, return_sequences=True,
                                         recurrent_dropout=self.bilstm_dropout))
     def call(self, x):
         x = self.spatial(x)
         x = self.bilstm(x)
         x = self.bilstm_2(x)
         return x
-
 
 
 class CharCNNBlock(Layer):
@@ -141,7 +157,7 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 
         self.wq = tf.keras.layers.Dense(d_model)
         self.wk = tf.keras.layers.Dense(d_model)
-        
+
         #v = tf.keras.layers.Dense(d_model)
 
     def split_heads(self, x, batch_size):
@@ -150,13 +166,13 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         """
         x = tf.reshape(x, (batch_size, -1, self.num_heads, self.depth))
         return tf.transpose(x, perm=[0, 2, 1, 3])
-   
+
     def call(self, x, mask=None):
         batch_size = tf.shape(x)[0]
         d_model = x.shape[2]
 
         x = x + positional_encoding(self.max_len, d_model)
- 
+
         q = self.wq(x)  # (batch_size, seq_len, d_model)
         k = self.wk(x)  # (batch_size, seq_len, d_model)
         #v = self.wv(v)  # (batch_size, seq_len, d_model)
@@ -170,4 +186,3 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         attention_weights = scaled_dot_product_attention(q, k, mask)
 
         return attention_weights
-        

@@ -1,0 +1,1 @@
+{"max_len": 90, "pretrained_embeddings": "bert-base-multilingual-uncased", "token2word": false, "learning_rate": 0.001, "patience": 10, "epochs": 100, "batch_size": 64, "spatial_dropout": 0.7, "bilstm_units": 100, "bilstm_dropout": 0.8, "dense1": 100, "dense2": 100}

@@ -30,14 +30,12 @@ def scaled_dot_product_attention(q, k, mask=None):
   k, v must have matching penultimate dimension, i.e.: seq_len_k = seq_len_v.
   The mask has different shapes depending on its type(padding or look ahead)
   but it must be broadcastable for addition.
-
   Args:
     q: query shape == (..., seq_len_q, depth)
     k: key shape == (..., seq_len_k, depth)
     v: value shape == (..., seq_len_v, depth_v)
     mask: Float tensor with shape broadcastable
           to (..., seq_len_q, seq_len_k). Defaults to None.
-
   Returns:
     output, attention_weights
   """
@@ -50,8 +48,8 @@ def scaled_dot_product_attention(q, k, mask=None):
 
   mask = tf.cast(mask, tf.float32)
   # add the mask to the scaled tensor.
-  #if mask is not None:
-  #  scaled_attention_logits += (mask * -1e9)
+  if mask is not None:
+    scaled_attention_logits += (mask * -1e9)
 
   # softmax is normalized on the last axis (seq_len_k) so that the scores
   # add up to 1.

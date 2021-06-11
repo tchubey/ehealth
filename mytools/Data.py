@@ -12,22 +12,21 @@ from scripts.utils import Collection, Keyphrase, Sentence, ENTITIES
 from mytools.process_bilou import encode_bilou, decode_bilou
 
 class Data:
-    def __init__(self, max_len, pretrained_model_name, remove_punctuation, token2word):
+    def __init__(self, max_len, pretrained_model_name, token2word):
         self.max_len = max_len
         self.pretrained = pretrained_model_name
-        self.remove_punctuation = remove_punctuation
         self.token2word = token2word
 
         self.tokenizer = BertTokenizerFast.from_pretrained(self.pretrained, strip_accents=True) # Load a pre-trained tokenizer
         self.bertembedd = TFBertModel.from_pretrained(self.pretrained)
 
-        pad = {"pad": -1} 
-        self.labels = ENTITIES + ['O']
-        self.label2idx= {**{t: i for i, t in enumerate(self.labels)}, **pad}
+        pad = {"pad": 0} 
+        self.labels =  ['O'] + ENTITIES
+        self.label2idx= {**{t: i+1 for i, t in enumerate(self.labels)}, **pad}
         self.idx2label = {i: w for w, i in self.label2idx.items()}
 
         self.bilou = ['B-','I-','L-','U-', 'O']
-        self.bilou2idx = {**{t: i for i, t in enumerate(self.bilou)}, **pad}
+        self.bilou2idx = {**{t: i+1 for i, t in enumerate(self.bilou)}, **pad}
         self.idx2bilou = {i: w for w, i in self.bilou2idx.items()}
 
     def get_n_labels(self):
@@ -42,10 +41,7 @@ class Data:
 
     def process_input_sentence(self, sentence: Sentence) -> dict:
         text = sentence.text
-        if self.remove_punctuation:
-            translator = re.compile('[%s]' % re.escape(string.punctuation))
-            text = translator.sub(' ', text)
-        
+       
         tokenized_batch : BatchEncoding = self.tokenizer(text)
         tokenized_text :Encoding  = tokenized_batch[0]
         ids = np.array([tokenized_text.ids])
@@ -87,8 +83,8 @@ class Data:
 
         return {"tokens": np.array(tokens), \
                 "spans": spans, \
-                "labels": [self.label2idx.get(l) for l in labels] if labels else None, \
-                "bilou": [self.bilou2idx.get(l) for l in bilou] if bilou else None, \
+                "labels": np.array([self.label2idx.get(l) for l in labels]) if labels else None, \
+                "bilou": np.array([self.bilou2idx.get(l) for l in bilou]) if bilou else None, \
                 "embeddings": np.array([embeddings]), \
                 "mask": np.array([mask]),
                 }
@@ -123,6 +119,8 @@ class Data:
                                 predicted_labels, tokens, spans) -> List[Keyphrase]:
         
         bilou = [self.idx2bilou.get(p) for p in predicted_bilou]
+        #print(predicted_bilou)
+        #print(bilou)
         labels = [self.idx2label.get(p) for p in predicted_labels]
                
         prediction = [b + t if b!='O' and t!='O' else 'O' for b, t in zip(bilou, labels)]

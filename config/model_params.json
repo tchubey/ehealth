@@ -1,16 +1,15 @@
 {
-"max_len": 50,
-"pretrained_embeddings": "dccuchile/bert-base-spanish-wwm-uncased",
-"remove_punctuation": true,
-"token2word": true,
+"max_len": 90,
+"pretrained_embeddings": "bert-base-multilingual-uncased",
+"token2word": false,
 "learning_rate": 1e-03,
 "patience": 10,
 "min_delta": 0.01,
 "epochs": 100,
 "batch_size": 64,
-"spatial_dropout": 0.3,
+"spatial_dropout": 0.7,
 "bilstm_units": 100,
 "bilstm_dropout": 0.8,
-"dense": 100,
-"mha": 100
+"dense1":200,
+"dense2":100
 }

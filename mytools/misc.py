@@ -1,5 +1,5 @@
 
-def config_seeds(seed=0):
+def config_seeds(seed=10):
     import os
     os.environ['PYTHONHASHSEED'] = str(seed)
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # supress TF warnings
